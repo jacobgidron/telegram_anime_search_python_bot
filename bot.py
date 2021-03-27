@@ -8,9 +8,8 @@ import requests
 # f =open('token.txt','r')
 # TOKEN = f.read()
 # f.close()
-TOKEN = "1780351566:AAFRhYegh9BTeuJa99JKY0xrLIOkH45fGTk"
+TOKEN = "your token here"
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
-
 ANIME_REFERENCES = {
     "i love emilia!": 'You are a cruel man, Subaru-kun.',  # Re:Zero
     'omae wa mou shindeiru': '<b>Nani?!</b>',  # meme
