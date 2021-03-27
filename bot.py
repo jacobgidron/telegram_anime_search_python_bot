@@ -4,9 +4,25 @@ import re
 import telebot
 
 import requests
-f =open('token.txt','r')
-TOKEN = f.read()
-f.close()
+
+# f =open('token.txt','r')
+# TOKEN = f.read()
+# f.close()
+TOKEN = "1780351566:AAFRhYegh9BTeuJa99JKY0xrLIOkH45fGTk"
+bot = telebot.TeleBot(TOKEN, parse_mode=None)
+
+ANIME_REFERENCES = {
+    "i love emilia!": 'You are a cruel man, Subaru-kun.',  # Re:Zero
+    'omae wa mou shindeiru': '<b>Nani?!</b>',  # meme
+ #   'cactus juice': ['<i>It\'s the quenchiest!</i>', '<i>It\'ll quench ya!</i>'],  # Avatar: TLA
+    'akihabara!': 'We don\'t have time to sightsee.',  # Oreimo
+    "madoka": 'our lord and savior',  # madoka
+    "feel free to verbally abuse me too if you'd like": 'I can\'t figure out if you\'re a nice person or a weird person.',
+    # Oreimo
+    'hakase da nyan': "Moe desu.."
+}
+REFERENCES_TREGER = "|".join(ANIME_REFERENCES.keys())
+
 
 def anilist_search(name, anime=True):
     variables = {
@@ -93,60 +109,61 @@ def anilist_search(name, anime=True):
         return j
 
 
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
-
-
-@bot.message_handler(regexp=r'\[(.+)]|\{(.+)}')
-def bot_anilist_search(message):
-    matchs = re.match(r'\[(.+)].+\{(.+)}', message.text).groups()
-    anime_match, manga_match = matchs
-    if anime_match is not None:
-        jason = anilist_search(anime_match, True)
-        if jason is None:
-            bot.send_message(message.chat.id, f"sorry {message.from_user.first_name} , {manga_match} is not a manga")
-        image = jason['data']['Page']['media'][0]['coverImage']['extraLarge']
-        url = jason['data']['Page']['media'][0]['siteUrl']
-        title = jason['data']['Page']['media'][0]['title'].values()
-        title = " \n".join(title)
-        genres = ", ".join(jason['data']['Page']['media'][0]['genres'])
-        description = jason['data']['Page']['media'][0]['description']
-        msg = f"""  <b>{title}</b>
-                    
-                    <a href="{image}">&#8205;</a>
-                    <a href="{url}">::link::</a>
-                    <pre language="python">{genres}</pre>
-                    {description.replace("<br>", "")}"""
-        bot.send_message(message.chat.id, msg, parse_mode='HTML')
-    if manga_match is not None:
-        jason = anilist_search(manga_match, False)
-        if jason is None:
-            bot.send_message(message.chat.id, f"sorry {message.from_user.first_name} , {manga_match} is not a manga")
-        image = jason['data']['Page']['media'][0]['coverImage']['extraLarge']
-        url = jason['data']['Page']['media'][0]['siteUrl']
-        title = jason['data']['Page']['media'][0]['title'].values()
-        title = " \n".join(title)
-        genres = ", ".join(jason['data']['Page']['media'][0]['genres'])
-        description = jason['data']['Page']['media'][0]['description']
-        msg = f"""  <b>{title}</b>
-                    
-                    <a href="{image}">&#8205;</a>
-                    <a href="{url}">::link::</a>
-                    <pre language="python">{genres}</pre>
-                    {description.replace("<br>", "")}"""
-        bot.send_message(message.chat.id, msg, parse_mode='HTML')
-
-
 @bot.message_handler(commands=['help'])  # help message handler
-def send_welcome(message):
+def send_help(message):
     name = message.from_user.first_name
     bot.reply_to(message, f"ok {name} first thing DON'T PANIC")
 
 
-if __name__ == '__main__':
-    while True:
-        try:
-            bot.polling(none_stop=True)
-            # ConnectionError and ReadTimeout because of possible timout of the requests library
-            # maybe there are others, therefore Exception
-        except Exception:
-            time.sleep(15)
+def make_response(jason):
+    image = jason['data']['Page']['media'][0]['coverImage']['extraLarge']
+    url = jason['data']['Page']['media'][0]['siteUrl']
+    title = jason['data']['Page']['media'][0]['title'].values()
+    title = " \n".join(title)
+    genres = ", ".join(jason['data']['Page']['media'][0]['genres'])
+    description = jason['data']['Page']['media'][0]['description']
+    msg = f"""  <b>{title}</b>
+    
+                        <a href="{image}">&#8205;</a>
+                        <a href="{url}">::link::</a>
+                        <pre language="python">{genres}</pre>
+                        {description.replace("<br>", "")}"""
+    return msg
+
+
+@bot.message_handler(regexp='(?:{(.+)}|\[(.+)])')
+def bot_anilist_search(message):
+    match =  re.findall(r'\[(.+)]', message.text)
+    if len(match) >0:
+        anime_match, =match
+        jason = anilist_search(anime_match, True)
+        if jason is None:
+            msg = f"sorry {message.from_user.first_name} , {anime_match} is not an anime"
+        else:
+            msg = make_response(jason)
+        bot.send_message(message.chat.id, msg, parse_mode='HTML')
+    match = re.findall(r'\{(.+)}', message.text)
+    if len(match) >0:
+        manga_match, = match
+        jason = anilist_search(manga_match, False)
+        if jason is None:
+            bot.send_message(message.chat.id, f"sorry {message.from_user.first_name} , {manga_match} is not a manga")
+        else:
+            msg = make_response(jason)
+        bot.send_message(message.chat.id, msg, parse_mode='HTML')
+
+
+@bot.message_handler(regexp=f"/{REFERENCES_TREGER}/i")
+def on_reference_match(message):
+    print("reference")
+    reference, = re.findall(f"/{REFERENCES_TREGER}/i", message.text)
+    bot.reply_to(message, ANIME_REFERENCES[reference.lower()],)
+
+
+while True:
+    try:
+        bot.polling(none_stop=True)
+        # ConnectionError and ReadTimeout because of possible timout of the requests library
+        # maybe there are others, therefore Exception
+    except Exception:
+        time.sleep(15)
