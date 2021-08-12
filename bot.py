@@ -8,19 +8,13 @@ import requests
 # f =open('token.txt','r')
 # TOKEN = f.read()
 # f.close()
-TOKEN = "your token here"
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
-ANIME_REFERENCES = {
-    "i love emilia!": 'You are a cruel man, Subaru-kun.',  # Re:Zero
-    'omae wa mou shindeiru': '<b>Nani?!</b>',  # meme
- #   'cactus juice': ['<i>It\'s the quenchiest!</i>', '<i>It\'ll quench ya!</i>'],  # Avatar: TLA
-    'akihabara!': 'We don\'t have time to sightsee.',  # Oreimo
-    "madoka": 'our lord and savior',  # madoka
-    "feel free to verbally abuse me too if you'd like": 'I can\'t figure out if you\'re a nice person or a weird person.',
-    # Oreimo
-    'hakase da nyan': "Moe desu.."
-}
-REFERENCES_TREGER = "|".join(ANIME_REFERENCES.keys())
+# TOKEN = "1780351566:AAFRhYegh9BTeuJa99JKY0xrLIOkH45fGTk"
+with open("Data.json") as f:
+    data=json.load(f)
+ANIME_REFERENCES = data["OTHER"]["ANIME_REFERENCES"]
+bot = telebot.TeleBot(data["BOT DATA"]["TOKEN"], parse_mode=None)
+REFERENCES_TRIGGER =re.compile( "|".join(ANIME_REFERENCES.keys()), re.IGNORECASE)
+REFERENCES_TRIGGER_set = set(ANIME_REFERENCES.keys())
 
 
 def anilist_search(name, anime=True):
@@ -132,17 +126,17 @@ def make_response(jason):
 
 @bot.message_handler(regexp='(?:{(.+)}|\[(.+)])')
 def bot_anilist_search(message):
-    match =  re.findall(r'\[(.+)]', message.text)
-    if len(match) >0:
-        anime_match, =match
+    match = re.findall(r'\[(.+)]', message.text) #serches for  [anime name]
+    if len(match) > 0:
+        anime_match, = match
         jason = anilist_search(anime_match, True)
         if jason is None:
             msg = f"sorry {message.from_user.first_name} , {anime_match} is not an anime"
         else:
             msg = make_response(jason)
         bot.send_message(message.chat.id, msg, parse_mode='HTML')
-    match = re.findall(r'\{(.+)}', message.text)
-    if len(match) >0:
+    match = re.findall(r'\{(.+)}', message.text) #serches for {manga name}
+    if len(match) > 0:
         manga_match, = match
         jason = anilist_search(manga_match, False)
         if jason is None:
@@ -152,11 +146,14 @@ def bot_anilist_search(message):
         bot.send_message(message.chat.id, msg, parse_mode='HTML')
 
 
-@bot.message_handler(regexp=f"/{REFERENCES_TREGER}/i")
+# @bot.message_handler(func=lambda x: len(REFERENCES_TREGER_set & {x}) > 0)
+# @bot.message_handler(regexp=f"(?i){REFERENCES_TRIGGER}")
+@bot.message_handler(func=lambda message: True if REFERENCES_TRIGGER.match(message.text) else False)
 def on_reference_match(message):
-    print("reference")
-    reference, = re.findall(f"/{REFERENCES_TREGER}/i", message.text)
-    bot.reply_to(message, ANIME_REFERENCES[reference.lower()],)
+    reference = REFERENCES_TRIGGER.findall(message.text)
+    for ref in  reference:
+        bot.reply_to(message, ANIME_REFERENCES[ref.lower()], parse_mode='HTML')
+
 
 
 while True:
