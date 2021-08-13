@@ -9,13 +9,6 @@ import requests
 # TOKEN = f.read()
 # f.close()
 # TOKEN = "1780351566:AAFRhYegh9BTeuJa99JKY0xrLIOkH45fGTk"
-with open("Data.json") as f:
-    data=json.load(f)
-ANIME_REFERENCES = data["OTHER"]["ANIME_REFERENCES"]
-bot = telebot.TeleBot(data["BOT DATA"]["TOKEN"], parse_mode=None)
-REFERENCES_TRIGGER =re.compile( "|".join(ANIME_REFERENCES.keys()), re.IGNORECASE)
-REFERENCES_TRIGGER_set = set(ANIME_REFERENCES.keys())
-
 
 def anilist_search(name, anime=True):
     variables = {
@@ -155,6 +148,18 @@ def on_reference_match(message):
         bot.reply_to(message, ANIME_REFERENCES[ref.lower()], parse_mode='HTML')
 
 
+with open("Data.json") as f:
+    data=json.load(f)
+ANIME_REFERENCES = data["OTHER"]["ANIME_REFERENCES"]
+if data["BOT DATA"]["TOKEN"] is None:
+    data["BOT DATA"]["TOKEN"] = input("please enter a bot token")
+    with open("Data.json", "w") as file:
+        json.dumps(data, indent=2)
+bot = telebot.TeleBot(data["BOT DATA"]["TOKEN"], parse_mode=None)
+REFERENCES_TRIGGER =re.compile( "|".join(ANIME_REFERENCES.keys()), re.IGNORECASE)
+REFERENCES_TRIGGER_set = set(ANIME_REFERENCES.keys())
+
+
 
 while True:
     try:
@@ -163,3 +168,7 @@ while True:
         # maybe there are others, therefore Exception
     except Exception:
         time.sleep(15)
+    except KeyboardInterrupt:
+        print("saving before exit")
+        with open("Data.json", "w") as file:
+            json.dumps(data, indent=2)
