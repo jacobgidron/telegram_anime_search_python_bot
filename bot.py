@@ -5,10 +5,17 @@ import telebot
 
 import requests
 
-# f =open('token.txt','r')
-# TOKEN = f.read()
-# f.close()
-# TOKEN = "1780351566:AAFRhYegh9BTeuJa99JKY0xrLIOkH45fGTk"
+with open("Data.json") as f:
+    data = json.load(f)
+ANIME_REFERENCES = data["OTHER"]["ANIME_REFERENCES"]
+if data["BOT DATA"]["TOKEN"] is None:
+    data["BOT DATA"]["TOKEN"] = input("please enter a bot token")
+    with open("Data.json", "w") as file:
+        json.dumps(data, indent=2)
+bot = telebot.TeleBot(data["BOT DATA"]["TOKEN"], parse_mode=None)
+REFERENCES_TRIGGER = re.compile("|".join(ANIME_REFERENCES.keys()),
+                                re.IGNORECASE)  # made to check for sentences the bot will respond to
+
 
 def anilist_search(name, anime=True):
     variables = {
@@ -119,7 +126,7 @@ def make_response(jason):
 
 @bot.message_handler(regexp='(?:{(.+)}|\[(.+)])')
 def bot_anilist_search(message):
-    match = re.findall(r'\[(.+)]', message.text) #serches for  [anime name]
+    match = re.findall(r'\[(.+)]', message.text)  # serches for  [anime name]
     if len(match) > 0:
         anime_match, = match
         jason = anilist_search(anime_match, True)
@@ -128,7 +135,7 @@ def bot_anilist_search(message):
         else:
             msg = make_response(jason)
         bot.send_message(message.chat.id, msg, parse_mode='HTML')
-    match = re.findall(r'\{(.+)}', message.text) #serches for {manga name}
+    match = re.findall(r'\{(.+)}', message.text)  # serches for {manga name}
     if len(match) > 0:
         manga_match, = match
         jason = anilist_search(manga_match, False)
@@ -144,21 +151,8 @@ def bot_anilist_search(message):
 @bot.message_handler(func=lambda message: True if REFERENCES_TRIGGER.match(message.text) else False)
 def on_reference_match(message):
     reference = REFERENCES_TRIGGER.findall(message.text)
-    for ref in  reference:
+    for ref in reference:
         bot.reply_to(message, ANIME_REFERENCES[ref.lower()], parse_mode='HTML')
-
-
-with open("Data.json") as f:
-    data=json.load(f)
-ANIME_REFERENCES = data["OTHER"]["ANIME_REFERENCES"]
-if data["BOT DATA"]["TOKEN"] is None:
-    data["BOT DATA"]["TOKEN"] = input("please enter a bot token")
-    with open("Data.json", "w") as file:
-        json.dumps(data, indent=2)
-bot = telebot.TeleBot(data["BOT DATA"]["TOKEN"], parse_mode=None)
-REFERENCES_TRIGGER =re.compile( "|".join(ANIME_REFERENCES.keys()), re.IGNORECASE)
-REFERENCES_TRIGGER_set = set(ANIME_REFERENCES.keys())
-
 
 
 while True:
