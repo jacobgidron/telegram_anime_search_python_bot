@@ -11,7 +11,9 @@ ANIME_REFERENCES = data["OTHER"]["ANIME_REFERENCES"]
 if data["BOT DATA"]["TOKEN"] is None:
     data["BOT DATA"]["TOKEN"] = input("please enter a bot token")
     with open("Data.json", "w") as file:
-        json.dumps(data, indent=2)
+        json.dump(data, file, indent=4)
+        data["last_updated"] = time.ctime()
+
 bot = telebot.TeleBot(data["BOT DATA"]["TOKEN"], parse_mode=None)
 REFERENCES_TRIGGER = re.compile("|".join(ANIME_REFERENCES.keys()),
                                 re.IGNORECASE)  # made to check for sentences the bot will respond to
@@ -107,14 +109,24 @@ def send_help(message):
     name = message.from_user.first_name
     bot.reply_to(message, f"ok {name} first thing DON'T PANIC")
 
+@bot.message_handler(commands=['notify', "notfy"])
+def notify_all(message):
+    print("debug")
+    members = bot.get_chat_administrators(message.chat.id)
+    response = []
+    for member in members:
+        response.append(f"come here [{member.user.first_name} {member.custom_title if (member.custom_title is not None) else '' } {member.user.last_name}](tg://user?id={member.user.id})")
+    bot.send_message(message.chat.id, "\n".join(response), parse_mode='Markdown')
+    # [inline mention of a user](tg: // user?id=
+    # https: // api.telegram.org / bot1307488101: AAEWL089l5csfNV4oPrK9fYZnWiYyujsqAg / getChatAdministrators?chat_id = -1001377692313
 
-def make_response(jason):
-    image = jason['data']['Page']['media'][0]['coverImage']['extraLarge']
-    url = jason['data']['Page']['media'][0]['siteUrl']
-    title = jason['data']['Page']['media'][0]['title'].values()
+def make_response(j):
+    image = j['data']['Page']['media'][0]['coverImage']['extraLarge']
+    url = j['data']['Page']['media'][0]['siteUrl']
+    title = j['data']['Page']['media'][0]['title'].values()
     title = " \n".join(title)
-    genres = ", ".join(jason['data']['Page']['media'][0]['genres'])
-    description = jason['data']['Page']['media'][0]['description']
+    genres = ", ".join(j['data']['Page']['media'][0]['genres'])
+    description = j['data']['Page']['media'][0]['description']
     msg = f"""  <b>{title}</b>
     
                         <a href="{image}">&#8205;</a>
@@ -129,20 +141,17 @@ def bot_anilist_search(message):
     match = re.findall(r'\[(.+)]', message.text)  # serches for  [anime name]
     if len(match) > 0:
         anime_match, = match
-        jason = anilist_search(anime_match, True)
-        if jason is None:
+        json_dict = anilist_search(anime_match, True)
+        if json_dict is None:
             msg = f"sorry {message.from_user.first_name} , {anime_match} is not an anime"
         else:
-            msg = make_response(jason)
+            msg = make_response(json_dict)
         bot.send_message(message.chat.id, msg, parse_mode='HTML')
     match = re.findall(r'\{(.+)}', message.text)  # serches for {manga name}
     if len(match) > 0:
         manga_match, = match
-        jason = anilist_search(manga_match, False)
-        if jason is None:
-            bot.send_message(message.chat.id, f"sorry {message.from_user.first_name} , {manga_match} is not a manga")
-        else:
-            msg = make_response(jason)
+        json_dict = anilist_search(manga_match, False)
+        msg = make_response(json_dict) if json_dict is not None else f"sorry {message.from_user.first_name} , {manga_match} is not a manga"
         bot.send_message(message.chat.id, msg, parse_mode='HTML')
 
 
@@ -155,6 +164,7 @@ def on_reference_match(message):
         bot.reply_to(message, ANIME_REFERENCES[ref.lower()], parse_mode='HTML')
 
 
+
 while True:
     try:
         bot.polling(none_stop=True)
@@ -165,4 +175,5 @@ while True:
     except KeyboardInterrupt:
         print("saving before exit")
         with open("Data.json", "w") as file:
+            data["last_updated"] = time.ctime()
             json.dumps(data, indent=2)
